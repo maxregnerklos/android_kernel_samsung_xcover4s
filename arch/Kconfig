@@ -402,7 +402,7 @@ config CC_STACKPROTECTOR_REGULAR
 	  by about 0.3%.
 
 config CC_STACKPROTECTOR_STRONG
-	bool
+	bool "Strong"
 	default y if ANDROID_VERSION >= "90000"
 	select CC_STACKPROTECTOR
 	help
