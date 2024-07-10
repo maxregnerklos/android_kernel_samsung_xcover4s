@@ -1,0 +1,60 @@
+name: Port Kernel Commits
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_kernel_repo:
+        description: 'Base kernel repository'
+        required: true
+      base_branch:
+        description: 'Base branch'
+        required: true
+      port_kernel_repo:
+        description: 'Port kernel repository'
+        required: true
+      port_branch:
+        description: 'Port branch'
+        required: true
+      new_branch:
+        description: 'New branch for ported commits'
+        required: true
+
+jobs:
+  port_kernel_commits:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout base kernel source
+      uses: actions/checkout@v2
+      with:
+        repository: ${{ github.event.inputs.base_kernel_repo }}
+        ref: ${{ github.event.inputs.base_branch }}
+        path: base_kernel
+
+    - name: Checkout port kernel source
+      uses: actions/checkout@v2
+      with:
+        repository: ${{ github.event.inputs.port_kernel_repo }}
+        ref: ${{ github.event.inputs.port_branch }}
+        path: port_kernel
+
+    - name: Fetch commits from port kernel source
+      run: |
+        cd port_kernel
+        git fetch --unshallow
+
+    - name: Apply port kernel commits to base kernel
+      run: |
+        cd base_kernel
+        git remote add port_repo ../port_kernel
+        git fetch port_repo
+        for commit in $(git log --format="%H" HEAD..port_repo/${{ github.sha }}); do
+          git cherry-pick $commit || git cherry-pick --abort
+        done
+
+    - name: Create new branch and push changes
+      run: |
+        cd base_kernel
+        git checkout -b ${{ github.event.inputs.new_branch }}
+        git push origin ${{ github.event.inputs.new_branch }}
+        echo "Pushed changes to new branch: ${{ github.event.inputs.new_branch }}"
